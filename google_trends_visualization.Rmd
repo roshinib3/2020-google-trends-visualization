@@ -1,0 +1,56 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+```{r}
+library(dplyr)
+library(reshape2)
+library(ggplot2)
+library(ggridges)
+
+search_1 <- read.csv('google_trends_data/search_terms.csv')
+search_2 <- read.csv('google_trends_data/search_terms2.csv')
+search_3 <- read.csv('google_trends_data/search_terms3.csv')
+search_4 <- read.csv('google_trends_data/search_terms4.csv')
+
+df <- merge(merge(merge(search_1, search_2, by = 'Week'), search_3, by = 'Week'), search_4, by = 'Week')
+
+changelessthan1 <- function(x){
+  if(is.factor(x)) return(factor(x, levels=c(levels(x), "0.5")))
+  return(x)
+}
+change0 <- function(x){
+  if(is.factor(x)) return(factor(x, levels=c(levels(x), "0.1")))
+  return(x)
+}
+df <- as.data.frame(lapply(df, changelessthan1))
+df <- as.data.frame(lapply(df, change0))
+
+df[df == '<1'] <- '0.5'
+df[df == '0'] <- '0.1'
+df['Week'] <- as.Date(df[['Week']], "%m/%d/%Y")
+
+df <- df %>% mutate_if(is.factor,as.character)
+df <- df %>% mutate_if(is.character, as.numeric)
+colnames(df) <- sub("...United.States.", "", colnames(df))
+
+df <- df[ , -which(names(df) %in% c("Asymptomatic","Yemen", "How.to.cut.mens.hair.at.home", "Stimulus.checks", "Dalgona.coffee", "Zoom"))]
+head(df)
+
+df <- melt(df, id = "Week")
+```
+```{r, fig.width=8,fig.height=6}
+#df[,-1] <- sweep(df[,-1],2,colSums(df[,-1]),`/`)
+df$variable <- factor(df$variable, levels = c(                        
+ "election.results",             "WAP",                        
+ "Among.Us",                                      
+                   "Chadwick.Boseman",            
+   "Ruth.Bader.Ginsburg",     "Naya.Rivera",   "Black.Lives.Matter", "Where.is.my.stimulus.money",    "Tiger.King", "coronavirus","Parasite", "Kobe.Bryant", "Bushfires.in.Australia","TikTok" ), order = TRUE)
+df$value <- as.numeric(df$value)
+
+ggplot(df, aes(x = Week, y = variable, height = value, fill = variable)) +
+  geom_density_ridges2(show.legend = FALSE, stat = "identity", scale = 3)
+```
+
+
+
